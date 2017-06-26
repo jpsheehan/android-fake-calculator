@@ -107,7 +107,7 @@ public class MainActivity extends FragmentActivity {
         // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
         input.setInputType(InputType.TYPE_CLASS_TEXT);
         input.setText(String.valueOf(magic_number));
-        prefs.edit().putFloat("nz.sheehan.calculator.magic_number", (float)magic_number).apply();
+        prefs.edit().putLong("nz.sheehan.calculator.magic_number", magic_number).apply();
         builder.setView(input);
 
         // Set up the buttons
