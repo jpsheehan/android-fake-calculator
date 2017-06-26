@@ -17,13 +17,29 @@ import android.widget.TextView;
 
 public class MainActivity extends FragmentActivity {
 
+    private static final long DEFAULT_MAGIC_NUMBER = 123456789;
+    private static final String DEFAULT_MAGIC_SEQUENCE = "**+";
+
+    private long magic_number;
+    private String magic_sequence;
+
+    private double storedValue = 0.0;
+    private char operation = ' ';
+    private Boolean isInDecimal = false;
+    private Boolean wasEqualsLast = false;
+    private String previousOperations = "";
+
+    private Boolean isMagicActive;
+
+    private SharedPreferences prefs;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
 
-        Button buttonDecimal = (Button)findViewById(R.id.buttonDecimal);
+        Button buttonDecimal = findViewById(R.id.buttonDecimal);
         buttonDecimal.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
@@ -34,20 +50,17 @@ public class MainActivity extends FragmentActivity {
 
         prefs = getSharedPreferences("nz.sheehan.calculator", Context.MODE_PRIVATE);
 
-        MAGIC_NUMBER = prefs.getFloat("nz.sheehan.calculator.magic_number", 123456789.0f);
-        MAGIC_SEQUENCE = prefs.getString("nz.sheehan.calculator.magic_sequence", "**+");
+        try {
+            magic_number = prefs.getLong("nz.sheehan.calculator.magic_number", DEFAULT_MAGIC_NUMBER);
+            magic_sequence = prefs.getString("nz.sheehan.calculator.magic_sequence", DEFAULT_MAGIC_SEQUENCE);
+        }
+        catch (Exception ex) {
+            magic_number = DEFAULT_MAGIC_NUMBER;
+            magic_sequence = DEFAULT_MAGIC_SEQUENCE;
+        }
+
+        isMagicActive = !magic_sequence.equals("");
     }
-
-    private double MAGIC_NUMBER;
-    private String MAGIC_SEQUENCE;
-
-    private double storedValue = 0.0;
-    private char operation = ' ';
-    private Boolean isInDecimal = false;
-    private Boolean wasEqualsLast = false;
-    private String previousOperations = "";
-
-    private SharedPreferences prefs;
 
     private void showMagicSequenceEditor() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -58,15 +71,18 @@ public class MainActivity extends FragmentActivity {
 
         // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
         input.setInputType(InputType.TYPE_CLASS_TEXT);
-        input.setText(MAGIC_SEQUENCE);
+        input.setText(magic_sequence);
         builder.setView(input);
 
         // Set up the buttons
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                MAGIC_SEQUENCE = input.getText().toString();
-                prefs.edit().putString("nz.sheehan.calculator.magic_sequence", MAGIC_SEQUENCE).apply();
+                magic_sequence = input.getText().toString();
+
+                isMagicActive = !magic_sequence.equals("");
+
+                prefs.edit().putString("nz.sheehan.calculator.magic_sequence", magic_sequence).apply();
                 showMagicNumberEditor();
             }
         });
@@ -83,22 +99,22 @@ public class MainActivity extends FragmentActivity {
 
     private void showMagicNumberEditor() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Set Secret Number:");
+        builder.setTitle("Set Special Number:");
 
         // Set up the input
         final EditText input = new EditText(this);
 
         // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
         input.setInputType(InputType.TYPE_CLASS_TEXT);
-        input.setText(String.valueOf(MAGIC_NUMBER));
-        prefs.edit().putFloat("nz.sheehan.calculator.magic_number", (float)MAGIC_NUMBER).apply();
+        input.setText(String.valueOf(magic_number));
+        prefs.edit().putFloat("nz.sheehan.calculator.magic_number", (float)magic_number).apply();
         builder.setView(input);
 
         // Set up the buttons
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                MAGIC_NUMBER = Double.valueOf(input.getText().toString());
+                magic_number = Long.valueOf(input.getText().toString());
             }
         });
 
@@ -168,10 +184,12 @@ public class MainActivity extends FragmentActivity {
 
         double number = Double.valueOf((String)getInput());
 
-        previousOperations += operation;
+        if (isMagicActive) {
+            previousOperations += operation;
 
-        if (previousOperations.length() > MAGIC_SEQUENCE.length()) {
-            previousOperations = previousOperations.substring(1, MAGIC_SEQUENCE.length() + 1);
+            if (previousOperations.length() > magic_sequence.length()) {
+                previousOperations = previousOperations.substring(1, magic_sequence.length() + 1);
+            }
         }
 
         switch (operation) {
@@ -256,8 +274,8 @@ public class MainActivity extends FragmentActivity {
 
         setStoredText(getStoredText() + " =");
 
-        if (previousOperations.equals(MAGIC_SEQUENCE)) {
-            storedValue = MAGIC_NUMBER;
+        if (previousOperations.equals(magic_sequence) && isMagicActive) {
+            storedValue = magic_number;
         }
 
         setInput(nicelyFormatNumberString(storedValue));
@@ -266,7 +284,7 @@ public class MainActivity extends FragmentActivity {
     }
 
     public void onButtonDecimal(View view) {
-        if (isInDecimal == false) {
+        if (!isInDecimal) {
             isInDecimal = true;
             setInput(getInput() + ".");
         }
